@@ -4,43 +4,33 @@
     [cljsjs.react]
     [cljsjs.react.dom]))
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 (def root (.getElementById js/document "app"))
 
-(defn render! [element]
-  (js/ReactDOM.render element root))
+(defn render! [element] (js/ReactDOM.render element root))
 
+(def a "Item 1")
+
+(def props {:className "boo"})
 
 (defn items [items]
   (ol
     (map-indexed (fn [idx txt] (li {:key idx} txt)) items)))
 
-
-
-
-(def a "Item 1")
-
-
 (comment
-
-
-  (macroexpand '(div "hello"))
   (render! (.createElement js/React "div" #js {} #js ["Hello "]))
   (render! (.createElement js/React "div" #js {} #js ["Hello There"]))
   (render! (.createElement js/React "div" #js {"className" "red"} #js ["Hello There Bob"]))
+
+  (macroexpand '(div "hello"))
+  (macroexpand '(div a))
+  (macroexpand '(div {} a))
+  (macroexpand '(div props a))
+  (macroexpand '(div :.boo props
+                  (ol
+                    (li "1"))))
+  (macroexpand '(div :.boo {:className "other"}
+                  (ol
+                    (li "1"))))
 
   (render! (div
              (h1 "Items")
