@@ -5,3 +5,4 @@ public/cljs-runtime
 public/main.js
 public/manifest.edn
 .idea/
+part-01-react.iml
