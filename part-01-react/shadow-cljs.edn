@@ -3,7 +3,7 @@
  :builds   {:app {:target     :browser
                   :output-dir "public"
                   :asset-path "/"
-                  :modules    {:main {:entries [demo.raw]}}}}
+                  :modules    {:main {:entries [demo.app]}}}}
 
  :dev-http {8000 "public"}
  :nrepl    {:port 9000}}
