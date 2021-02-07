@@ -31,12 +31,12 @@
 
 
 
+(def a "Item 1")
 
 
 (comment
 
 
-  (def a "Item 1")
   (macroexpand '(div "hello"))
   (render! (.createElement js/React "div" #js {} #js ["Hello "]))
   (render! (.createElement js/React "div" #js {} #js ["Hello There"]))
@@ -46,9 +46,27 @@
              (h1 "Items")
              (items ["a" "OTHER" "c"])))
 
+  ;; Forces function call and runtime interpolation of CLJ -> js props
+  (let [props {:className "red"}]
+    (time
+      (dotimes [n 100000]
+        (render! (div props "hello")))))
+
+  ;; Function-based, but with js props already
+  (let [props #js {:className "red"}]
+    (time
+      (dotimes [n 100000]
+        (render! (div props a)))))
+
+  ;; Macro expanded speed
   (time
     (dotimes [n 100000]
-      (render! (div nil a))))
+      (render! (div {:className "red"} "hello"))))
+
+  ;; RAW React speed
+  (time
+    (dotimes [n 100000]
+      (render! (.createElement js/React "div" #js {"className" "red"} "Hello"))))
 
   )
 
