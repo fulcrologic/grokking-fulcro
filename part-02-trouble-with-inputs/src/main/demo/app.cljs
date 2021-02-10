@@ -12,17 +12,21 @@
 
 (defonce app-state (atom {:first-name "Tony"}))
 
-(defn ui-form [{:keys [first-name]}]
-  (div :.ui.container
-    (div :.ui.form
-      (h3 "My Form")
-      (div :.field
-        (label (str "First Name"))
-        (dom/create-element "input"
-          #js {:value   first-name
-               :onInput (fn [evt]
-                          (let [new-value (evt/target-value evt)]
-                            (swap! app-state assoc :first-name new-value)))})))))
+(defn Form [^js js-props]
+  (let [{:keys [first-name]} (.-myprops js-props)]
+    (div :.ui.container
+      (div :.ui.form
+        (h3 "My Form")
+        (div :.field
+          (label (str "First Name"))
+          (dom/input
+            {:value    first-name
+             :onChange (fn [evt]
+                         (let [new-value (evt/target-value evt)]
+                           (swap! app-state assoc :first-name new-value)))}))))))
+
+(defn ui-form [props]
+  (dom/create-element Form #js {:myprops props}))
 
 (defn ui-root [props]
   (ui-form props))
@@ -38,6 +42,5 @@
   (render! (ui-root @app-state))
   (start!)
   (swap! app-state assoc :first-name "Bob")
-
   )
 
