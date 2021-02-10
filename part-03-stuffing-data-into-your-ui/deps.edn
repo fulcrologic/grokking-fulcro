@@ -1,0 +1,6 @@
+{:paths ["src/main"]
+ :deps  {org.clojure/clojure                 {:mvn/version "1.10.1"}
+         org.clojure/clojurescript           {:mvn/version "1.10.773"}
+         com.fulcrologic/fulcro              {:mvn/version "3.4.14"}
+         com.fulcrologic/semantic-ui-wrapper {:mvn/version "2.0.1"}
+         thheller/shadow-cljs                {:mvn/version "2.11.17"}}}
