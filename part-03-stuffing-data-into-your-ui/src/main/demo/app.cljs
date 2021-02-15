@@ -1,64 +1,86 @@
 (ns demo.app
   (:require
+    [goog.object :as gobj]
     [com.fulcrologic.fulcro.dom :as dom :refer [div label h3 i]]
     [com.fulcrologic.fulcro.dom.events :as evt]
     [com.fulcrologic.fulcro.algorithms.denormalize :refer [db->tree]]
+    [com.fulcrologic.fulcro.algorithms.merge :as merge]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
+    [com.fulcrologic.fulcro.application :as app]
     [taoensso.timbre :as log]))
 
-;; Not using Fulcro's wrapped input for now...
-(defn input [props] (dom/create-element "input" (clj->js props)))
-(def mount-point (.getElementById js/document "app"))
-(defn raf! [f] (js/requestAnimationFrame f))
-(defn render! [element] (js/ReactDOM.render element mount-point))
-
-(defonce app-state (atom
-                     {:root         {:router [:component/id :router]}
-                      :component/id {:router      {:active-page :people
-                                                   :people-page [:component/id :people-page]}
-                                     :people-page {:person-list [:component/id :person-list]
-                                                   :person-form [:person/id 1]}
-                                     :person-list {:people [[:person/id 1]
-                                                            [:person/id 2]]}}
-                      :person/id    {1 {:person/id 1 :person/first-name "Tony"}
-                                     2 {:person/id 2 :person/first-name "Emily"}}}))
+(defonce APP (app/fulcro-app))
 
 (comment
-
   (swap! app-state assoc-in [:address/id 11] {:address/id 11 :address/street "111 Main"})
   (swap! app-state assoc-in [:person/id 3] {:person/id 3 :person/first-name "Sally" :person/address [:address/id 11]})
   (swap! app-state update-in [:component/id :person-list :people] conj [:person/id 3]))
 
-(defn ui-person-list [{:keys [people]}]
+(defsc Person [this {:person/keys [id first-name]}]
+  {:query         [:person/id :person/first-name]
+   :ident         :person/id
+   :initial-state {:person/id         :param/id
+                   :person/first-name :param/name}}
+  (div :.item {:key id}
+    (i :.user.icon)
+    (div :.content (div :.header first-name))))
+
+(def ui-person (comp/factory Person {:keyfn :person/id}))
+
+(defsc PersonList [this {:keys [people]}]
+  {:query         [{:people (comp/get-query Person)}]
+   :ident         (fn [] [:component/id :person-list])
+   :initial-state {:people [{:id 1 :name "Tony"}
+                            {:id 2 :name "Emily"}]}}
   (comp/fragment
     (h3 :.ui.header "People")
     (div :.ui.middle.aligned.selection.list
-      (map-indexed
-        (fn [idx {:person/keys [id first-name]}]
-          (div :.item {:key idx}
-            (i :.user.icon)
-            (div :.content (div :.header first-name))))
-        people))))
+      (map ui-person people))))
 
-(defn ui-person-form
-  {:query [:person/id :person/first-name :person/address]}
-  [{:person/keys [id first-name address]}]
+(def ui-person-list (comp/factory PersonList))
+
+(defsc PersonForm [this {:person/keys [id first-name]}]
+  {:query [:person/id :person/first-name]
+   :ident :person/id}
   (div :.ui.form
     (h3 :.ui.header "Person")
     (div :.field
       (label "First Name")
-      (input {:value (or first-name "")}))))
+      (dom/input {:value (or first-name "")}))))
 
-(defn ui-people-page [{:keys [person-list person-form]}]
+(def ui-person-form (comp/factory PersonForm {:keyfn :person/id}))
+
+(defsc PeoplePage [this {:keys [person-list person-form]}]
+  {:query         [{:person-list (comp/get-query PersonList)}
+                   {:person-form (comp/get-query PersonForm)}]
+   :ident         (fn [] [:component/id :people-page])
+   :initial-state {:person-list {}}}
   (div :.ui.two.column.grid
     (div :.column
       (ui-person-list person-list))
     (div :.column
       (ui-person-form person-form))))
 
-(defn ui-router
-  {:query [:active-page {:people-page (:query (meta #'ui-people-page))}]}
-  [{:keys [active-page people-page]}]
+(def ui-people-page (comp/factory PeoplePage))
+
+(defsc HomePage [this {:keys [message-of-the-day]}]
+  {:query         [:message-of-the-day]
+   :ident         (fn [] [:component/id :home-page])
+   :initial-state {:message-of-the-day "Hello world"}}
+  (div :.ui.segment
+    (h3 :.ui.header
+      message-of-the-day)))
+
+(def ui-home-page (comp/factory HomePage))
+
+(defsc Router [this {:keys [active-page home-page people-page]}]
+  {:query         [:active-page
+                   {:home-page (comp/get-query HomePage)}
+                   {:people-page (comp/get-query PeoplePage)}]
+   :ident         (fn [] [:component/id :router])
+   :initial-state {:active-page :people
+                   :home-page   {}
+                   :people-page {}}}
   (div :.ui.container
     (div :.ui.pointing.menu
       (div :.item {:classes [(when (= active-page :home) "active")]} (str "Home"))
@@ -66,30 +88,34 @@
       (div :.item {:classes [(when (= active-page :people) "active")]} "People"))
     (div :.ui.segment
       (case active-page
+        :home (ui-home-page home-page)
         :people (ui-people-page people-page)
         (div "UNKNOWN ROUTE")))))
 
-(defn ui-root
-  {:query [{:router (:query (meta #'ui-router))}]}
-  [{:keys [router]}]
+(def ui-router (comp/factory Router))
+
+(defsc Root [this {:keys [router]}]
+  {:query         [{:router (comp/get-query Router)}]
+   :initial-state {:router {}}}
   (ui-router router))
 
-(comment
-  (:query (meta #'ui-router))
-  (:query (meta #'ui-root))
-
-  )
-
 (defn start! []
-  (log/info "Rendering started")
-  (raf!
-    (fn next-frame* []
-      (swap! app-state update :render-frame (fnil inc 0))
-      (let [{:keys [root]} (db->tree '[{:root
-                                        [{:router
-                                          [:active-page
-                                           {:people-page
-                                            [{:person-list [{:people [:person/id :person/first-name]}]}
-                                             {:person-form [:person/id :person/first-name {:person/address [*]}]}]}]}]}] @app-state @app-state)]
-        (render! (ui-root root)))
-      (raf! next-frame*))))
+  (app/mount! APP Root (js/document.getElementById "app")))
+
+(comment
+  (-> APP ::app/state-atom deref)
+
+  ;; Hey server, Give me a list of people!!!
+  {:people [:person/id :person/first-name :person/age
+            {:person/primary-address [:address/street :address/city]}]}
+  ;; EQL server response
+  (merge/merge-component! APP PersonList
+    {:people [{:person/id         1
+               :person/first-name "Bob"}
+              {:person/id         2
+               :person/first-name "Sam"}
+              {:person/id         3
+               :person/first-name "Barbara"}]})
+
+  (df/load! APP :friends Person {:target [:component/id :person-list :people]})
+  )
