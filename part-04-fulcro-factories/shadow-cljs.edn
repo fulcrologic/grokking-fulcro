@@ -1,0 +1,13 @@
+{:deps     true
+
+ :builds   {:app {:target     :browser
+                  :output-dir "public"
+                  :asset-path "/"
+                  :devtools   {:preloads   [com.fulcrologic.fulcro.inspect.preload
+                                            com.fulcrologic.fulcro.inspect.dom-picker-preload]
+                               :after-load demo.app/start!}
+                  :modules    {:main {:entries [demo.app]
+                                      :init-fn demo.app/start!}}}}
+
+ :dev-http {8000 "public"}
+ :nrepl    {:port 9000}}
